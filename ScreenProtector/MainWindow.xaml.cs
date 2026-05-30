@@ -115,12 +115,8 @@ namespace ScreenProtector
             {
                 _isHiddenToTray = true;
                 InitializeNotifyIcon(); // Always initialize to ensure tray icon exists
-                // Only hide if not in startup silent mode (which handles hiding in OnContentRendered)
-                if (!_isStartupSilent)
-                {
-                    Visibility = Visibility.Hidden;
-                    ShowInTaskbar = false;
-                }
+                Visibility = Visibility.Hidden;
+                ShowInTaskbar = false;
             }
             else if (WindowState == WindowState.Normal)
             {
