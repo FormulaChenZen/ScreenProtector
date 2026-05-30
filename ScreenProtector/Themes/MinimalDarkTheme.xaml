@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 最简单的颜色定义 -->
+    <Color x:Key="DarkBackground">#FF1E1E1E</Color>
+    <Color x:Key="LightText">#E0E0E0</Color>
+    <Color x:Key="AccentColor">#5D9CEC</Color>
+    
+    <!-- 最简单的画刷定义 -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource DarkBackground}"/>
+    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource LightText}"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    
+    <!-- 最简单的按钮样式 -->
+    <Style x:Key="BasicButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Margin" Value="4"/>
+    </Style>
+    
+    <!-- 最简单的窗口样式 -->
+    <Style x:Key="BasicWindowStyle" TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+</ResourceDictionary>
