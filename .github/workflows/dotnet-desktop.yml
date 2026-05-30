@@ -28,12 +28,23 @@ jobs:
     - name: Compress artifacts
       run: Compress-Archive -Path ./publish/* -DestinationPath ./ScreenProtector-win-x64.zip -Force
 
-    - name: Release
+    - name: Create Release
       if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v2
+      id: create_release
+      uses: peter-evans/create-release@v6
       with:
-        files: ScreenProtector-win-x64.zip
-        generate_release_tag: true
+        tag: v${{ github.sha }}
         prerelease: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Release Asset
+      if: github.event_name == 'push'
+      uses: peter-evans/upload-release-asset@v2
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        file: ./ScreenProtector-win-x64.zip
+        asset_name: ScreenProtector-win-x64.zip
+        asset_content_type: application/zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
