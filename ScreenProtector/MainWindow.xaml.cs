@@ -63,6 +63,42 @@ namespace ScreenProtector
             Closed += MainWindow_Closed;
             StateChanged += MainWindow_StateChanged;
             SourceInitialized += MainWindow_SourceInitialized;
+
+            // React to language changes to update UI-bound resources
+            Localization.Localizer.LanguageChanged += (s, e) =>
+            {
+                // Force UI update for bindings that use TranslationProvider
+                Dispatcher.Invoke(() =>
+                {
+                    // Re-bind title
+                    this.Title = Properties.Resources.Title_App;
+
+                    // Update tray/context menu if initialized
+                    if (_notifyIcon != null)
+                    {
+                        _notifyIcon.Text = Properties.Resources.Tray_NotifyText;
+                        if (_contextMenu != null)
+                        {
+                            foreach (Forms.ToolStripItem item in _contextMenu.Items)
+                            {
+                                if (item is Forms.ToolStripMenuItem mi)
+                                {
+                                    if (mi.Text == Properties.Resources.Tray_Show || mi.Text == Properties.Resources.Tray_Exit)
+                                    {
+                                        // already localized
+                                    }
+                                    else
+                                    {
+                                        // Attempt to set by name
+                                        if (mi.Text.Contains("显示") || mi.Text.Contains("Show")) mi.Text = Properties.Resources.Tray_Show;
+                                        if (mi.Text.Contains("退出") || mi.Text.Contains("Exit")) mi.Text = Properties.Resources.Tray_Exit;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            };
         }
 
         private void MainWindow_SourceInitialized(object? sender, EventArgs e)
@@ -106,6 +142,19 @@ namespace ScreenProtector
             {
                 var current = (int)BrightnessSlider.Value;
                 BrightnessInput.Text = current.ToString();
+
+                // Initialize icon and label texts based on current resources
+                try
+                {
+                    IconTextBlock.Text = Properties.Resources.Icon_Gear;
+                }
+                catch { }
+
+                try
+                {
+                    BrightnessLabel.Text = Properties.Resources.Brightness_Placeholder + Properties.Resources.PercentSign;
+                }
+                catch { }
             }
         }
 
@@ -184,6 +233,13 @@ namespace ScreenProtector
             _idleSecondsThreshold = Settings.IdleSecondsThreshold;
             IdleSlider.Value = _idleSecondsThreshold;
             EnableIdleCheck.IsChecked = Settings.EnableIdleCheck;
+
+            // Initialize language combo
+            try
+            {
+                Localization.LanguageMenuHelper.AddLanguageMenu(LanguageCombo);
+            }
+            catch { }
         }
 
         internal void InitializeNotifyIcon()
@@ -217,21 +273,21 @@ namespace ScreenProtector
                     {
                         // Use default system icon as last resort
                         _notifyIcon = new Forms.NotifyIcon
-                        {
-                            Icon = System.Drawing.SystemIcons.Application,
-                            Visible = true,
-                            Text = "Screen Protector"
-                        };
+                                            {
+                                                Icon = System.Drawing.SystemIcons.Application,
+                                                Visible = true,
+                                                Text = Properties.Resources.Tray_NotifyText
+                                            };
                     }
                 }
                 else
                 {
                     _notifyIcon = new Forms.NotifyIcon
-                    {
-                        Icon = new System.Drawing.Icon(iconPath),
-                        Visible = true,
-                        Text = "Screen Protector"
-                    };
+                                    {
+                                        Icon = new System.Drawing.Icon(iconPath),
+                                        Visible = true,
+                                        Text = Properties.Resources.Tray_NotifyText
+                                    };
                 }
                 
                 // Force refresh tray icon
@@ -241,7 +297,7 @@ namespace ScreenProtector
                 // Create context menu
                 _contextMenu = new Forms.ContextMenuStrip();
 
-                var showMenuItem = new Forms.ToolStripMenuItem("显示", null, (s, e) =>
+                var showMenuItem = new Forms.ToolStripMenuItem(Properties.Resources.Tray_Show, null, (s, e) =>
                 {
                     ShowFromTray();
                 });
@@ -249,7 +305,7 @@ namespace ScreenProtector
 
                 _contextMenu.Items.Add(new Forms.ToolStripSeparator());
 
-                var exitMenuItem = new Forms.ToolStripMenuItem("退出", null, (s, e) =>
+                var exitMenuItem = new Forms.ToolStripMenuItem(Properties.Resources.Tray_Exit, null, (s, e) =>
                 {
                     System.Windows.Application.Current.Shutdown();
                 });
@@ -283,6 +339,19 @@ namespace ScreenProtector
                 Activate();
                 Focus();
             });
+        }
+
+        private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LanguageCombo.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+            {
+                try
+                {
+                    var culture = new System.Globalization.CultureInfo(tag);
+                    Localization.Localizer.SetCulture(culture);
+                }
+                catch { }
+            }
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -324,7 +393,7 @@ namespace ScreenProtector
                 return;
 
             _idleSecondsThreshold = (int)Math.Round(e.NewValue);
-            IdleLabel.Text = $"{_idleSecondsThreshold}s";
+            IdleLabel.Text = _idleSecondsThreshold + Properties.Resources.SecondUnit;
             IdleInput.Text = _idleSecondsThreshold.ToString();
             Settings.IdleSecondsThreshold = _idleSecondsThreshold;
             Settings.Save();
@@ -340,7 +409,7 @@ namespace ScreenProtector
                 value = Math.Clamp(value, 0, 600);
                 _idleSecondsThreshold = value;
                 IdleSlider.Value = value;
-                IdleLabel.Text = $"{value}s";
+                IdleLabel.Text = value + Properties.Resources.SecondUnit;
                 Settings.IdleSecondsThreshold = value;
                 Settings.Save();
             }
@@ -395,7 +464,7 @@ namespace ScreenProtector
                             SetBrightness(0);
                             _suppressSliderUpdate = true;
                             BrightnessSlider.Value = 0;
-                            BrightnessLabel.Text = "0%";
+                            BrightnessLabel.Text = Properties.Resources.Brightness_Placeholder + Properties.Resources.PercentSign; // keep same, will update icon separately
                             _suppressSliderUpdate = false;
                             _isDimmed = true;
                         }
@@ -428,7 +497,7 @@ namespace ScreenProtector
                         SetBrightness(_savedBrightness.Value);
                         _suppressSliderUpdate = true;
                         BrightnessSlider.Value = _savedBrightness.Value;
-                        BrightnessLabel.Text = $"{_savedBrightness.Value}%";
+                        BrightnessLabel.Text = _savedBrightness.Value + Properties.Resources.PercentSign;
                         _suppressSliderUpdate = false;
                     }
                     catch
@@ -450,14 +519,14 @@ namespace ScreenProtector
                 {
                     _suppressSliderUpdate = true;
                     BrightnessSlider.Value = current.Value;
-                    BrightnessLabel.Text = $"{current.Value}%";
+                    BrightnessLabel.Text = current.Value + Properties.Resources.PercentSign;
                     BrightnessInput.Text = current.Value.ToString();
                     _suppressSliderUpdate = false;
                 }
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"无法读取亮度: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"{Properties.Resources.Error_CannotReadBrightness}: {ex.Message}", Properties.Resources.Error_Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -467,7 +536,7 @@ namespace ScreenProtector
                 return;
 
             var value = (int)Math.Round(e.NewValue);
-            BrightnessLabel.Text = $"{value}%";
+            BrightnessLabel.Text = value + Properties.Resources.PercentSign;
             BrightnessInput.Text = value.ToString();
             try
             {
@@ -475,7 +544,7 @@ namespace ScreenProtector
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"无法设置亮度: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"{Properties.Resources.Error_CannotSetBrightness}: {ex.Message}", Properties.Resources.Error_Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -489,14 +558,14 @@ namespace ScreenProtector
                 value = Math.Clamp(value, 0, 100);
                 _suppressSliderUpdate = true;
                 BrightnessSlider.Value = value;
-                BrightnessLabel.Text = $"{value}%";
+                BrightnessLabel.Text = value + Properties.Resources.PercentSign;
                 try
                 {
                     SetBrightness(value);
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"无法设置亮度: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show($"{Properties.Resources.Error_CannotSetBrightness}: {ex.Message}", Properties.Resources.Error_Title, MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {

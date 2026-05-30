@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+	<value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+	<value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+	<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+	<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Title_App" xml:space="preserve">
+	<value>Screen Protector</value>
+  </data>
+  <data name="Subtitle_App" xml:space="preserve">
+	<value>Brightness Control &amp; Idle Detection</value>
+  </data>
+  <data name="Startup_Enable" xml:space="preserve">
+	<value>Start with Windows</value>
+  </data>
+  <data name="Brightness_SectionHeader" xml:space="preserve">
+	<value>Display Brightness</value>
+  </data>
+  <data name="Brightness_Refresh" xml:space="preserve">
+	<value>Refresh Current Brightness</value>
+  </data>
+  <data name="Idle_SectionHeader" xml:space="preserve">
+	<value>Idle Auto Dim</value>
+  </data>
+  <data name="Idle_Enable" xml:space="preserve">
+	<value>Enable Idle Auto Dim</value>
+  </data>
+  <data name="Idle_SecondsLabel" xml:space="preserve">
+	<value>Idle Duration (s):</value>
+  </data>
+  <data name="Idle_Description" xml:space="preserve">
+	<value>When the computer is idle for the configured time, the display will dim to minimum. Brightness will restore after activity resumes.</value>
+  </data>
+  <data name="About_Header" xml:space="preserve">
+	<value>About</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+	<value>Screen Protector is an app that supports:</value>
+  </data>
+  <data name="About_Feature1" xml:space="preserve">
+	<value>✓ Real-time brightness adjustment</value>
+  </data>
+  <data name="About_Feature2" xml:space="preserve">
+	<value>✓ Idle auto-dim to protect eyes</value>
+  </data>
+  <data name="About_Feature3" xml:space="preserve">
+	<value>✓ Start with Windows</value>
+  </data>
+  <data name="Footer" xml:space="preserve">
+	<value>© 2024 Screen Protector | Help protect your eyes and display</value>
+  </data>
+
+  <data name="Tray_Show" xml:space="preserve">
+	<value>Show</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+	<value>Exit</value>
+  </data>
+  <data name="Tray_NotifyText" xml:space="preserve">
+	<value>Screen Protector</value>
+  </data>
+  <data name="Language_Chinese" xml:space="preserve">
+	<value>中文</value>
+  </data>
+  <data name="Language_English" xml:space="preserve">
+	<value>English</value>
+  </data>
+  <data name="Language_SelectLabel" xml:space="preserve">
+	<value>Language:</value>
+  </data>
+
+  <data name="Icon_Gear" xml:space="preserve">
+	<value>⚙</value>
+  </data>
+  <data name="PercentSign" xml:space="preserve">
+	<value>%</value>
+  </data>
+  <data name="SecondUnit" xml:space="preserve">
+	<value>s</value>
+  </data>
+  <data name="Brightness_Placeholder" xml:space="preserve">
+	<value>--</value>
+  </data>
+
+  <data name="Error_Title" xml:space="preserve">
+	<value>Error</value>
+  </data>
+  <data name="Error_CannotSetBrightness" xml:space="preserve">
+	<value>Cannot set brightness</value>
+  </data>
+  <data name="Error_CannotReadBrightness" xml:space="preserve">
+	<value>Cannot read brightness</value>
+  </data>
+
+</root>

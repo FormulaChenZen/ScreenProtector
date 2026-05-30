@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+	<value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+	<value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+	<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+	<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Title_App" xml:space="preserve">
+	<value>屏幕保护</value>
+  </data>
+  <data name="Subtitle_App" xml:space="preserve">
+	<value>亮度控制与静置检测</value>
+  </data>
+  <data name="Startup_Enable" xml:space="preserve">
+	<value>开机启动</value>
+  </data>
+  <data name="Brightness_SectionHeader" xml:space="preserve">
+	<value>🔆 屏幕亮度</value>
+  </data>
+  <data name="Brightness_Refresh" xml:space="preserve">
+	<value>🔄 刷新当前亮度</value>
+  </data>
+  <data name="Idle_SectionHeader" xml:space="preserve">
+	<value>⏱ 静置自动降亮</value>
+  </data>
+  <data name="Idle_Enable" xml:space="preserve">
+	<value>启用静置自动降亮</value>
+  </data>
+  <data name="Idle_SecondsLabel" xml:space="preserve">
+	<value>静置时长 (秒):</value>
+  </data>
+  <data name="Idle_Description" xml:space="preserve">
+	<value>当电脑静置达到设定时间后，屏幕亮度将自动降至最低。恢复操作后，亮度将恢复到之前的设置。</value>
+  </data>
+  <data name="About_Header" xml:space="preserve">
+	<value>关于</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+	<value>Screen Protector 是一款屏幕保护应用，支持：</value>
+  </data>
+  <data name="About_Feature1" xml:space="preserve">
+	<value>✓ 实时亮度调节</value>
+  </data>
+  <data name="About_Feature2" xml:space="preserve">
+	<value>✓ 静置自动降亮以保护眼睛</value>
+  </data>
+  <data name="About_Feature3" xml:space="preserve">
+	<value>✓ 开机自启动功能</value>
+  </data>
+  <data name="Footer" xml:space="preserve">
+	<value>© 2024 Screen Protector | 帮助保护您的视力和屏幕</value>
+  </data>
+
+  <data name="Tray_Show" xml:space="preserve">
+	<value>显示</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+	<value>退出</value>
+  </data>
+  <data name="Tray_NotifyText" xml:space="preserve">
+	<value>Screen Protector</value>
+  </data>
+  <data name="Language_Chinese" xml:space="preserve">
+	<value>中文</value>
+  </data>
+  <data name="Language_English" xml:space="preserve">
+	<value>English</value>
+  </data>
+  <data name="Language_SelectLabel" xml:space="preserve">
+	<value>选择语言:</value>
+  </data>
+
+  <data name="Icon_Gear" xml:space="preserve">
+	<value>⚙</value>
+  </data>
+  <data name="PercentSign" xml:space="preserve">
+	<value>%</value>
+  </data>
+  <data name="SecondUnit" xml:space="preserve">
+	<value>秒</value>
+  </data>
+  <data name="Brightness_Placeholder" xml:space="preserve">
+	<value>--</value>
+  </data>
+
+  <data name="Error_Title" xml:space="preserve">
+	<value>错误</value>
+  </data>
+  <data name="Error_CannotSetBrightness" xml:space="preserve">
+	<value>无法设置亮度</value>
+  </data>
+  <data name="Error_CannotReadBrightness" xml:space="preserve">
+	<value>无法读取亮度</value>
+  </data>
+
+</root>
