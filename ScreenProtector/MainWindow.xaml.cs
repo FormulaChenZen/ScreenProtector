@@ -749,5 +749,35 @@ namespace ScreenProtector
                 StartupCheckBox.IsChecked = IsStartupEnabled();
             }
         }
+
+        private void WebsiteButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 打开网站的正确方式
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://rumystic.com",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                // 如果上面的方式失败，尝试其他方法
+                try
+                {
+                    System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo();
+                    psi.FileName = "cmd.exe";
+                    psi.Arguments = "/c start https://rumystic.com";
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    System.Diagnostics.Process.Start(psi);
+                }
+                catch (Exception innerEx)
+                {
+                    // 静默处理异常
+                }
+            }
+        }
     }
 }

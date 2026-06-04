@@ -117,7 +117,22 @@
                                    FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,8"/>
                         <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[About_Feature1]}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="12,0,0,8"/>
                         <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[About_Feature2]}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="12,0,0,8"/>
-                        <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[About_Feature3]}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="12,0,0,0"/>
+                        <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[About_Feature3]}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="12,0,0,16"/>
+
+                        <!-- Website Section -->
+                        <Separator Margin="0,0,0,12" Background="{StaticResource SecondaryTextBrush}" Opacity="0.3"/>
+                        <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[Website_Label]}" 
+                                   FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding Source={x:Static loc:TranslationProvider.Instance}, Path=[Website_Description]}" 
+                                   FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="12,0,0,8"/>
+                        <Button x:Name="WebsiteButton" Click="WebsiteButton_Click" 
+                                Margin="12,0,0,0" Padding="0" 
+                                Background="Transparent" BorderThickness="0"
+                                HorizontalAlignment="Left" Cursor="Hand">
+                            <TextBlock Text="🔗 Rumystic.com - Discover More Tools" 
+                                       FontSize="12" Foreground="{StaticResource PrimaryBrush}" 
+                                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        </Button>
                     </StackPanel>
                 </GroupBox>
             </StackPanel>

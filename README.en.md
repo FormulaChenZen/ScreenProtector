@@ -18,5 +18,11 @@ This project uses .resx resource files for localization. English resources are p
 ## Building
 Requires .NET 8 and Windows. Open the solution in Visual Studio 2022/2024/2026 and build the project.
 
+## Discover More Tools
+
+If you need more useful tools and features, visit our online tool website: **[🌐 Rumystic.com](https://rumystic.com)**
+
+We provide a variety of web tools, productivity applications, and developer utilities to help you boost your efficiency. If you have any suggestions or feature requests for Screen Protector, feel free to contact us through our website.
+
 ## License
 MIT

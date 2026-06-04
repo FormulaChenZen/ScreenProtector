@@ -101,4 +101,17 @@
 	<value>无法读取亮度</value>
   </data>
 
+  <data name="Website_Label" xml:space="preserve">
+	<value>更多工具</value>
+  </data>
+  <data name="Website_Description" xml:space="preserve">
+	<value>需要更多实用工具？访问我们的在线工具网站</value>
+  </data>
+  <data name="Website_Name" xml:space="preserve">
+	<value>Rumystic.com</value>
+  </data>
+  <data name="Website_Text" xml:space="preserve">
+	<value>访问 Rumystic.com - 更多工具等您发现</value>
+  </data>
+
 </root>
