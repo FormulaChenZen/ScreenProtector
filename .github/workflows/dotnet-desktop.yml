@@ -35,4 +35,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         sha="${GITHUB_SHA:0:8}"
-        gh release create "v$sha" ScreenProtector-win-x64.zip --prerelease || true
+        gh release create "v$sha" ScreenProtector-win-x64.zip --latest || true
