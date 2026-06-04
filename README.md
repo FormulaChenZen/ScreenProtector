@@ -1,10 +1,10 @@
+[English](https://github.com/FormulaChenZen/ScreenProtector/blob/master/README.en.md) | [中文](https://github.com/FormulaChenZen/ScreenProtector/blob/master/README.md)
+
 # Screen Protector
 
 Screen Protector 是一款轻量级的 Windows 桌面应用程序，旨在通过自动调节屏幕亮度来保护用户的眼睛。当检测到用户长时间未操作电脑时，应用会自动将屏幕亮度降至最低，减少蓝光辐射和眼睛疲劳。
 
 **✨ 特别推荐笔记本用户使用！** 该应用不仅能保护眼睛，还能有效**防止 OLED 屏幕烧屏**、**延长笔记本续航时间**。作者已在自己的笔记本上进行了充分验证，**稳定好用，值得信赖**。
-
-英文说明请参见 README.en.md。
 
 ## 主要功能
 

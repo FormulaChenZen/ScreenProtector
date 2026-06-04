@@ -1,10 +1,11 @@
+[English](https://github.com/FormulaChenZen/ScreenProtector/blob/master/README.en.md) | [中文](https://github.com/FormulaChenZen/ScreenProtector/blob/master/README.md)
+
 # Screen Protector
 
 Screen Protector is a lightweight Windows desktop application designed to protect your eyes by automatically adjusting screen brightness. When it detects that you haven't operated your computer for a long time, the application automatically reduces screen brightness to the minimum, reducing blue light radiation and eye strain.
 
 **✨ Highly Recommended for Laptop Users!** This application not only protects your eyes, but also effectively **prevents OLED screen burn-in** and **extends laptop battery life**. The author has thoroughly tested it on their own laptop and confirms it is **stable, reliable, and worth using**.
 
-For Chinese documentation, please see README.md.
 
 ## Key Features
 
