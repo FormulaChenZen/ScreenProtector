@@ -46,7 +46,7 @@ namespace ScreenProtector
             if (!createdNew)
             {
                 // Another instance is already running, bring it to foreground
-                IntPtr hWnd = FindWindow(null, "Screen Protector" ?? string.Empty); // Window title from MainWindow.xaml
+                IntPtr hWnd = FindWindow(null, ScreenProtector.Properties.Resources.Title_App ?? string.Empty);
                 if (hWnd != IntPtr.Zero)
                 {
                     if (IsIconic(hWnd))

@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+
+# Inno Setup output
+installer/Output/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Uploads / temp
+.uploads/

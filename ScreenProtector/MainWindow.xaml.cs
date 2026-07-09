@@ -11,7 +11,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Interop;
 using Microsoft.Win32;
 using System.IO;
 using IOPath = System.IO.Path;
@@ -25,23 +24,8 @@ namespace ScreenProtector
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
-        // Windows API for dark title bar
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int GWL_STYLE = -16;
-        private const int WS_SYSMENU = 0x80000;
-        private const int WS_MINIMIZEBOX = 0x20000;
-        private const int WS_MAXIMIZEBOX = 0x10000;
-        
-        [DllImport("dwmapi.dll", PreserveSig = true)]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-        
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        
-        [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         private bool _suppressSliderUpdate = false;
         private DispatcherTimer? _idleTimer;
@@ -62,7 +46,6 @@ namespace ScreenProtector
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
             StateChanged += MainWindow_StateChanged;
-            SourceInitialized += MainWindow_SourceInitialized;
 
             // React to language changes to update UI-bound resources
             Localization.Localizer.LanguageChanged += (s, e) =>
@@ -101,17 +84,6 @@ namespace ScreenProtector
             };
         }
 
-        private void MainWindow_SourceInitialized(object? sender, EventArgs e)
-        {
-            // Apply dark title bar
-            var hwnd = new WindowInteropHelper(this).Handle;
-            if (hwnd != IntPtr.Zero)
-            {
-                int darkMode = 1;
-                DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
-            }
-        }
-
         private bool _isHiddenToTray = false; // Track if window is minimized to tray
         private bool _notifyIconInitialized = false;
         private bool _isStartupSilent = false; // Track if started with -startup argument
@@ -142,13 +114,6 @@ namespace ScreenProtector
             {
                 var current = (int)BrightnessSlider.Value;
                 BrightnessInput.Text = current.ToString();
-
-                // Initialize icon and label texts based on current resources
-                try
-                {
-                    IconTextBlock.Text = Properties.Resources.Icon_Gear;
-                }
-                catch { }
 
                 try
                 {
