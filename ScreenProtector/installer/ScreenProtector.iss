@@ -22,7 +22,6 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 UninstallDisplayName={#MyAppName}
-UninstallDisplayVersion={#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Install directory - {autopf} resolves to user Programs dir when non-admin
