@@ -22,11 +22,34 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
-    - name: Build
+    - name: Extract version
+      id: version
+      shell: pwsh
+      run: |
+        [xml]$csproj = Get-Content ScreenProtector/ScreenProtector.csproj
+        $version = ($csproj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+        if (-not $version) { $version = "1.0.0" }
+        "version=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "Version: $version"
+
+    # Framework-dependent build → ZIP (small, needs .NET 8 Desktop Runtime)
+    - name: Publish (framework-dependent)
       run: dotnet publish ScreenProtector/ScreenProtector.csproj --configuration Release --output ./publish --runtime win-x64 --self-contained false
 
     - name: Compress artifacts
       run: Compress-Archive -Path ./publish/* -DestinationPath ./ScreenProtector-win-x64.zip -Force
+
+    # Self-contained build → Inno Setup installer (no prerequisites)
+    - name: Publish (self-contained for installer)
+      run: dotnet publish ScreenProtector/ScreenProtector.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false
+
+    - name: Install Inno Setup
+      run: choco install innosetup -y --no-progress
+
+    - name: Build installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.version.outputs.version }} ScreenProtector/installer/ScreenProtector.iss
+        dir ScreenProtector/installer/Output
 
     - name: Release
       if: github.event_name == 'push'
@@ -35,4 +58,11 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         sha="${GITHUB_SHA:0:8}"
-        gh release create "v$sha" ScreenProtector-win-x64.zip --latest || true
+        VERSION="${{ steps.version.outputs.version }}"
+        INSTALLER="ScreenProtector/installer/Output/ScreenProtector-Setup-${VERSION}.exe"
+        gh release create "v$sha" \
+          ScreenProtector-win-x64.zip \
+          "$INSTALLER" \
+          --latest \
+          --title "Screen Protector v${VERSION}" \
+          --generate-notes || true
