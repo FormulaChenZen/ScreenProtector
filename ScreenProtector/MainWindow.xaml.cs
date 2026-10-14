@@ -36,16 +36,40 @@ namespace ScreenProtector
         private const string AppName = "ScreenProtector";
         private Forms.NotifyIcon? _notifyIcon;
         private Forms.ContextMenuStrip? _contextMenu;
+        private Forms.ToolStripMenuItem? _screenOffMenuItem;
+        private readonly ScreenBlackout _screenBlackout = new();
+        private readonly IdleScreenOffTrigger _idleScreenOffTrigger = new();
+        private readonly LocalSessionGuard _localSessionGuard = new();
+        private readonly RemoteBrightnessSession _remoteBrightness;
+        private readonly DispatcherTimer _sessionTimer = new(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        private bool _automaticBlackout;
+        private bool _loadingIdleSettings = true;
+        private bool _loadingModeSettings = true;
+        private bool _updatingModeControls;
+        private bool _useRemoteMode;
+        private bool _isClosed;
+        private bool _isClosing;
+        private Exception? _remoteBrightnessError;
+        private long _brightnessRetryAfter;
 
         // Settings properties
         public static Properties.Settings Settings { get; } = Properties.Settings.Default;
 
         public MainWindow()
         {
+            _useRemoteMode = Settings.UseRemoteMode;
+            _remoteBrightness = new RemoteBrightnessSession(
+                () => _isDimmed ? _savedBrightness : GetCurrentBrightness(), SetBrightness);
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+            Closing += MainWindow_Closing;
             Closed += MainWindow_Closed;
             StateChanged += MainWindow_StateChanged;
+            _screenBlackout.Closed += ScreenBlackout_Closed;
+            _sessionTimer.Tick += SessionTimer_Tick;
 
             // React to language changes to update UI-bound resources
             Localization.Localizer.LanguageChanged += (s, e) =>
@@ -55,6 +79,7 @@ namespace ScreenProtector
                 {
                     // Re-bind title
                     this.Title = Properties.Resources.Title_App;
+                    UpdateScreenOffControls();
 
                     // Update tray/context menu if initialized
                     if (_notifyIcon != null)
@@ -66,16 +91,13 @@ namespace ScreenProtector
                             {
                                 if (item is Forms.ToolStripMenuItem mi)
                                 {
-                                    if (mi.Text == Properties.Resources.Tray_Show || mi.Text == Properties.Resources.Tray_Exit)
+                                    mi.Text = mi.Name switch
                                     {
-                                        // already localized
-                                    }
-                                    else
-                                    {
-                                        // Attempt to set by name
-                                        if (mi.Text.Contains("显示") || mi.Text.Contains("Show")) mi.Text = Properties.Resources.Tray_Show;
-                                        if (mi.Text.Contains("退出") || mi.Text.Contains("Exit")) mi.Text = Properties.Resources.Tray_Exit;
-                                    }
+                                        "Show" => Properties.Resources.Tray_Show,
+                                        "TurnOffDisplay" => Properties.Resources.Tray_TurnOffDisplay,
+                                        "Exit" => Properties.Resources.Tray_Exit,
+                                        _ => mi.Text
+                                    };
                                 }
                             }
                         }
@@ -112,14 +134,7 @@ namespace ScreenProtector
             
             if (BrightnessInput != null && BrightnessSlider != null)
             {
-                var current = (int)BrightnessSlider.Value;
-                BrightnessInput.Text = current.ToString();
-
-                try
-                {
-                    BrightnessLabel.Text = Properties.Resources.Brightness_Placeholder + Properties.Resources.PercentSign;
-                }
-                catch { }
+                UpdateBrightnessControls((int)BrightnessSlider.Value);
             }
         }
 
@@ -153,19 +168,27 @@ namespace ScreenProtector
         [DllImport("kernel32.dll")]
         private static extern uint GetTickCount();
 
-        private int GetIdleSeconds()
+        private int GetIdleSeconds(out uint lastInputTick)
         {
             var lastInput = new LASTINPUTINFO();
             lastInput.cbSize = (uint)Marshal.SizeOf(lastInput);
+            lastInputTick = 0;
             if (!GetLastInputInfo(ref lastInput))
                 return 0;
 
+            lastInputTick = lastInput.dwTime;
             var idle = GetTickCount() - lastInput.dwTime;
             return (int)(idle / 1000);
         }
 
         private void MainWindow_Closed(object? sender, System.EventArgs e)
         {
+            _isClosed = true;
+            SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+            _sessionTimer.Stop();
+            _sessionTimer.Tick -= SessionTimer_Tick;
+            _screenBlackout.Closed -= ScreenBlackout_Closed;
+            _screenBlackout.Dispose();
             if (_idleTimer != null)
             {
                 _idleTimer.Stop();
@@ -183,12 +206,28 @@ namespace ScreenProtector
             // Save settings
             Settings.IdleSecondsThreshold = _idleSecondsThreshold;
             Settings.EnableIdleCheck = EnableIdleCheck.IsChecked ?? false;
+            Settings.EnableIdleScreenOff = EnableIdleScreenOff.IsChecked ?? false;
+            Settings.AutoSwitchMode = AutoSwitchMode.IsChecked == true;
+            Settings.UseRemoteMode = ProtectionModeCombo.SelectedIndex == 1;
             Settings.EnableStartup = StartupCheckBox.IsChecked ?? false;
             Settings.Save();
         }
 
         private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
+            AutoSwitchMode.IsChecked = Settings.AutoSwitchMode;
+            ProtectionModeCombo.SelectedIndex = Settings.UseRemoteMode ? 1 : 0;
+            _loadingModeSettings = false;
+            try
+            {
+                SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Session notifications unavailable: {ex.Message}");
+            }
+            RefreshSessionState();
+            _sessionTimer.Start();
             RefreshBrightnessSlider();
             // Initialize startup checkbox state from registry
             var isStartupEnabled = IsStartupEnabled();
@@ -197,7 +236,11 @@ namespace ScreenProtector
             // Load settings
             _idleSecondsThreshold = Settings.IdleSecondsThreshold;
             IdleSlider.Value = _idleSecondsThreshold;
+            EnableIdleScreenOff.IsChecked = Settings.EnableIdleScreenOff;
             EnableIdleCheck.IsChecked = Settings.EnableIdleCheck;
+            _loadingIdleSettings = false;
+            if (EnableIdleCheck.IsChecked == true)
+                StartIdleTimer();
 
             // Initialize language combo
             try
@@ -265,15 +308,21 @@ namespace ScreenProtector
                 var showMenuItem = new Forms.ToolStripMenuItem(Properties.Resources.Tray_Show, null, (s, e) =>
                 {
                     ShowFromTray();
-                });
+                }) { Name = "Show" };
                 _contextMenu.Items.Add(showMenuItem);
+
+                _screenOffMenuItem = new Forms.ToolStripMenuItem(Properties.Resources.Tray_TurnOffDisplay, null, (s, e) =>
+                {
+                    ShowBlackout();
+                }) { Name = "TurnOffDisplay", Enabled = CanUseLocalProtection && !_screenBlackout.IsActive };
+                _contextMenu.Items.Add(_screenOffMenuItem);
 
                 _contextMenu.Items.Add(new Forms.ToolStripSeparator());
 
                 var exitMenuItem = new Forms.ToolStripMenuItem(Properties.Resources.Tray_Exit, null, (s, e) =>
                 {
-                    System.Windows.Application.Current.Shutdown();
-                });
+                    Close();
+                }) { Name = "Exit" };
                 _contextMenu.Items.Add(exitMenuItem);
 
                 _notifyIcon.ContextMenuStrip = _contextMenu;
@@ -324,6 +373,215 @@ namespace ScreenProtector
             RefreshBrightnessSlider();
         }
 
+        private void ScreenOffButton_Click(object sender, RoutedEventArgs e) => ShowBlackout();
+
+        private bool CanUseLocalProtection => _localSessionGuard.IsLocal && !_useRemoteMode && !_remoteBrightness.HasSavedBrightness;
+
+        private void ProtectionModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveProtectionMode();
+
+        private void AutoSwitchMode_Changed(object sender, RoutedEventArgs e) => SaveProtectionMode();
+
+        private void SaveProtectionMode()
+        {
+            if (_loadingModeSettings || _updatingModeControls)
+                return;
+
+            Settings.AutoSwitchMode = AutoSwitchMode.IsChecked == true;
+            Settings.UseRemoteMode = ProtectionModeCombo.SelectedIndex == 1;
+            Settings.Save();
+            _brightnessRetryAfter = 0;
+            RefreshSessionState();
+        }
+
+        private void ShowBlackout(bool automatic = false)
+        {
+            RefreshSessionState();
+            if (!CanUseLocalProtection || _screenBlackout.IsActive)
+                return;
+
+            ScreenOffErrorText.Visibility = Visibility.Collapsed;
+            Exception? error = null;
+            try
+            {
+                _automaticBlackout = automatic;
+                _screenBlackout.Show();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+            finally
+            {
+                UpdateScreenOffControls();
+            }
+
+            if (error != null)
+            {
+                string message = $"{Properties.Resources.Error_CannotTurnOffDisplay}: {error.Message}";
+                if (!automatic)
+                    System.Windows.MessageBox.Show(message, Properties.Resources.Error_Title,
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                else
+                {
+                    ScreenOffErrorText.Text = message;
+                    ScreenOffErrorText.Visibility = Visibility.Visible;
+                }
+            }
+        }
+
+        private void ScreenBlackout_Closed(object? sender, EventArgs e)
+        {
+            _automaticBlackout = false;
+            UpdateScreenOffControls();
+        }
+
+        private void UpdateScreenOffControls()
+        {
+            bool pending = _screenBlackout.IsActive;
+            bool local = _localSessionGuard.IsLocal;
+            _updatingModeControls = true;
+            try
+            {
+                ProtectionModeCombo.SelectedIndex = _useRemoteMode ? 1 : 0;
+                ProtectionModeCombo.IsEnabled = AutoSwitchMode.IsChecked != true;
+            }
+            finally { _updatingModeControls = false; }
+            ScreenOffButton.IsEnabled = CanUseLocalProtection && !pending;
+            IdleProtectionOptions.IsEnabled = CanUseLocalProtection;
+            BrightnessOptions.IsEnabled = !_useRemoteMode && !_remoteBrightness.HasSavedBrightness;
+            RemoteSessionText.Visibility = local ? Visibility.Collapsed : Visibility.Visible;
+            RemoteBrightnessText.Text = _remoteBrightnessError != null
+                ? $"{(_useRemoteMode ? Properties.Resources.Error_RdpBrightness : Properties.Resources.Error_RestoreBrightness)}: {_remoteBrightnessError.Message}"
+                : _remoteBrightness.IsDimmed ? Properties.Resources.DisplayOff_RdpDimmed : string.Empty;
+            RemoteBrightnessText.Visibility = string.IsNullOrEmpty(RemoteBrightnessText.Text)
+                ? Visibility.Collapsed : Visibility.Visible;
+            ScreenOffPendingText.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
+            if (!pending)
+                _automaticBlackout = false;
+            if (_screenOffMenuItem != null)
+                _screenOffMenuItem.Enabled = CanUseLocalProtection && !pending;
+        }
+
+        private void SessionTimer_Tick(object? sender, EventArgs e) => RefreshSessionState();
+
+        private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+        {
+            if (_isClosed || Dispatcher.HasShutdownStarted)
+                return;
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!_isClosed)
+                    RefreshSessionState();
+            });
+        }
+
+        private void RefreshSessionState()
+        {
+            if (_isClosing || _isClosed)
+                return;
+
+            bool changed = _localSessionGuard.Refresh();
+            bool remoteMode = ProtectionModeSelector.UseRemote(Settings.AutoSwitchMode, Settings.UseRemoteMode,
+                _localSessionGuard.Kind, _useRemoteMode);
+            if (remoteMode != _useRemoteMode)
+            {
+                _useRemoteMode = remoteMode;
+                changed = true;
+                if (!remoteMode)
+                    _localSessionGuard.RestartIdleCountdown();
+            }
+            if (changed)
+            {
+                _idleScreenOffTrigger.Reset();
+                _brightnessRetryAfter = 0;
+            }
+
+            if (!_localSessionGuard.IsLocal || _useRemoteMode)
+            {
+                try
+                {
+                    _screenBlackout.Close();
+                }
+                catch (Exception ex)
+                {
+                    ScreenOffErrorText.Text = $"{Properties.Resources.Error_CannotExitBlackout}: {ex.Message}";
+                    ScreenOffErrorText.Visibility = Visibility.Visible;
+                }
+            }
+            if (Environment.TickCount64 >= _brightnessRetryAfter)
+            {
+                try
+                {
+                    if (_useRemoteMode && (!Settings.AutoSwitchMode || _localSessionGuard.IsRemote))
+                    {
+                        // Transfer the original idle brightness without briefly lighting the laptop screen.
+                        try { _remoteBrightness.Enter(); }
+                        finally
+                        {
+                            if (_remoteBrightness.HasSavedBrightness)
+                            {
+                                _savedBrightness = null;
+                                _isDimmed = false;
+                            }
+                        }
+                        UpdateBrightnessControls(0);
+                    }
+                    else if (!_useRemoteMode && _remoteBrightness.HasSavedBrightness &&
+                        (!Settings.AutoSwitchMode || _localSessionGuard.IsLocal))
+                    {
+                        int? original = _remoteBrightness.SavedBrightness;
+                        _remoteBrightness.Restore();
+                        if (original.HasValue)
+                            UpdateBrightnessControls(original.Value);
+                    }
+                    else if (!_localSessionGuard.IsLocal && !_remoteBrightness.HasSavedBrightness)
+                    {
+                        RestoreFromIdle();
+                    }
+                    _remoteBrightnessError = null;
+                }
+                catch (Exception ex)
+                {
+                    _remoteBrightnessError = ex;
+                    _brightnessRetryAfter = Environment.TickCount64 + 5000;
+                }
+            }
+            UpdateScreenOffControls();
+        }
+
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _isClosing = true;
+            _sessionTimer.Stop();
+            Exception? error = null;
+            try
+            {
+                _screenBlackout.Close();
+            }
+            catch (Exception ex)
+            {
+                error = new InvalidOperationException(Properties.Resources.Error_CannotExitBlackout, ex);
+            }
+            try
+            {
+                RestoreFromIdle();
+                _remoteBrightness.Restore();
+            }
+            catch (Exception ex)
+            {
+                error ??= new InvalidOperationException(Properties.Resources.Error_RestoreBrightness, ex);
+            }
+            if (error != null)
+            {
+                e.Cancel = true;
+                System.Windows.MessageBox.Show($"{error.Message}: {error.InnerException?.Message}",
+                    Properties.Resources.Error_Title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _isClosing = false;
+                _sessionTimer.Start();
+            }
+        }
+
         private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             SetStartup(true);
@@ -340,16 +598,46 @@ namespace ScreenProtector
 
         private void EnableIdleCheck_Checked(object sender, RoutedEventArgs e)
         {
+            if (_loadingIdleSettings)
+                return;
+
             StartIdleTimer();
             Settings.EnableIdleCheck = true;
+            Settings.Save();
         }
 
         private void EnableIdleCheck_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (_loadingIdleSettings)
+                return;
+
             StopIdleTimer();
+            CancelAutomaticBlackout();
             // restore if dimmed
             TryRestoreFromIdle();
             Settings.EnableIdleCheck = false;
+            Settings.Save();
+        }
+
+        private void EnableIdleScreenOff_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loadingIdleSettings)
+                return;
+
+            Settings.EnableIdleScreenOff = EnableIdleScreenOff.IsChecked == true;
+            Settings.Save();
+            if (Settings.EnableIdleScreenOff)
+                TryRestoreFromIdle();
+            else
+                CancelAutomaticBlackout();
+        }
+
+        private void CancelAutomaticBlackout()
+        {
+            if (!_automaticBlackout)
+                return;
+
+            _screenBlackout.Close();
         }
 
         private void IdleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -360,8 +648,11 @@ namespace ScreenProtector
             _idleSecondsThreshold = (int)Math.Round(e.NewValue);
             IdleLabel.Text = _idleSecondsThreshold + Properties.Resources.SecondUnit;
             IdleInput.Text = _idleSecondsThreshold.ToString();
-            Settings.IdleSecondsThreshold = _idleSecondsThreshold;
-            Settings.Save();
+            if (!_loadingIdleSettings)
+            {
+                Settings.IdleSecondsThreshold = _idleSecondsThreshold;
+                Settings.Save();
+            }
         }
 
         private void IdleInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -375,8 +666,11 @@ namespace ScreenProtector
                 _idleSecondsThreshold = value;
                 IdleSlider.Value = value;
                 IdleLabel.Text = value + Properties.Resources.SecondUnit;
-                Settings.IdleSecondsThreshold = value;
-                Settings.Save();
+                if (!_loadingIdleSettings)
+                {
+                    Settings.IdleSecondsThreshold = value;
+                    Settings.Save();
+                }
             }
         }
 
@@ -413,10 +707,29 @@ namespace ScreenProtector
         {
             try
             {
-                if (_idleSecondsThreshold <= 0)
+                if (_isClosing || !CanUseLocalProtection || EnableIdleCheck.IsChecked != true)
                     return;
 
-                var idle = GetIdleSeconds();
+                var idle = _localSessionGuard.GetIdleSeconds(GetIdleSeconds(out uint lastInputTick));
+
+                bool screenOffEnabled = EnableIdleScreenOff.IsChecked == true;
+                bool turnOff = _idleScreenOffTrigger.ShouldTrigger(lastInputTick, idle,
+                    _idleSecondsThreshold, screenOffEnabled);
+
+                if (_idleSecondsThreshold <= 0)
+                {
+                    CancelAutomaticBlackout();
+                    TryRestoreFromIdle();
+                    return;
+                }
+
+                if (screenOffEnabled)
+                {
+                    if (turnOff && !_screenBlackout.IsActive)
+                        ShowBlackout(automatic: true);
+                    return;
+                }
+
                 if (!_isDimmed && idle >= _idleSecondsThreshold)
                 {
                     // go dim
@@ -424,14 +737,11 @@ namespace ScreenProtector
                     if (current.HasValue)
                     {
                         _savedBrightness = current.Value;
+                        _isDimmed = true;
                         try
                         {
                             SetBrightness(0);
-                            _suppressSliderUpdate = true;
-                            BrightnessSlider.Value = 0;
-                            BrightnessLabel.Text = Properties.Resources.Brightness_Placeholder + Properties.Resources.PercentSign; // keep same, will update icon separately
-                            _suppressSliderUpdate = false;
-                            _isDimmed = true;
+                            UpdateBrightnessControls(0);
                         }
                         catch
                         {
@@ -453,23 +763,16 @@ namespace ScreenProtector
 
         private void TryRestoreFromIdle()
         {
-            if (_isDimmed)
+            try { RestoreFromIdle(); }
+            catch (Exception error) { System.Diagnostics.Debug.WriteLine(error); }
+        }
+
+        private void RestoreFromIdle()
+        {
+            if (_isDimmed && _savedBrightness.HasValue)
             {
-                if (_savedBrightness.HasValue)
-                {
-                    try
-                    {
-                        SetBrightness(_savedBrightness.Value);
-                        _suppressSliderUpdate = true;
-                        BrightnessSlider.Value = _savedBrightness.Value;
-                        BrightnessLabel.Text = _savedBrightness.Value + Properties.Resources.PercentSign;
-                        _suppressSliderUpdate = false;
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
-                }
+                SetBrightness(_savedBrightness.Value);
+                UpdateBrightnessControls(_savedBrightness.Value);
                 _savedBrightness = null;
                 _isDimmed = false;
             }
@@ -482,11 +785,7 @@ namespace ScreenProtector
                 var current = GetCurrentBrightness();
                 if (current.HasValue)
                 {
-                    _suppressSliderUpdate = true;
-                    BrightnessSlider.Value = current.Value;
-                    BrightnessLabel.Text = current.Value + Properties.Resources.PercentSign;
-                    BrightnessInput.Text = current.Value.ToString();
-                    _suppressSliderUpdate = false;
+                    UpdateBrightnessControls(current.Value);
                 }
             }
             catch (Exception ex)
@@ -495,14 +794,26 @@ namespace ScreenProtector
             }
         }
 
+        private void UpdateBrightnessControls(int brightness)
+        {
+            bool previous = _suppressSliderUpdate;
+            _suppressSliderUpdate = true;
+            try
+            {
+                BrightnessSlider.Value = brightness;
+                BrightnessLabel.Text = brightness + Properties.Resources.PercentSign;
+                BrightnessInput.Text = brightness.ToString();
+            }
+            finally { _suppressSliderUpdate = previous; }
+        }
+
         private void BrightnessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_suppressSliderUpdate || BrightnessLabel == null || BrightnessInput == null)
+            if (_suppressSliderUpdate || _useRemoteMode || _remoteBrightness.HasSavedBrightness || BrightnessLabel == null || BrightnessInput == null)
                 return;
 
             var value = (int)Math.Round(e.NewValue);
-            BrightnessLabel.Text = value + Properties.Resources.PercentSign;
-            BrightnessInput.Text = value.ToString();
+            UpdateBrightnessControls(value);
             try
             {
                 SetBrightness(value);
@@ -515,7 +826,7 @@ namespace ScreenProtector
 
         private void BrightnessInput_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (BrightnessInput == null || BrightnessSlider == null || _suppressSliderUpdate)
+            if (BrightnessInput == null || BrightnessSlider == null || _suppressSliderUpdate || _useRemoteMode || _remoteBrightness.HasSavedBrightness)
                 return;
 
             if (int.TryParse(BrightnessInput.Text, out int value))
@@ -545,7 +856,7 @@ namespace ScreenProtector
             {
                 var scope = new ManagementScope("\\\\.\\root\\WMI");
                 scope.Connect();
-                using (var searcher = new ManagementObjectSearcher(scope, new SelectQuery("WmiMonitorBrightness")))
+                using (var searcher = new ManagementObjectSearcher(scope, new SelectQuery("SELECT * FROM WmiMonitorBrightness WHERE Active = TRUE")))
                 using (var results = searcher.Get())
                 {
                     foreach (ManagementObject obj in results)
@@ -565,17 +876,20 @@ namespace ScreenProtector
 
         private void SetBrightness(int brightness)
         {
-            // brightness: 0-100
+            if (brightness < 0 || brightness > 100)
+                throw new ArgumentOutOfRangeException(nameof(brightness));
             var scope = new ManagementScope("\\\\.\\root\\WMI");
             scope.Connect();
-            using (var searcher = new ManagementObjectSearcher(scope, new SelectQuery("WmiMonitorBrightnessMethods")))
+            using (var searcher = new ManagementObjectSearcher(scope, new SelectQuery("SELECT * FROM WmiMonitorBrightnessMethods WHERE Active = TRUE")))
             using (var results = searcher.Get())
             {
                 foreach (ManagementObject obj in results)
                 {
                     // Parameters: Timeout, Brightness
                     var inParams = new object[] { (uint)1, (byte)brightness };
-                    obj.InvokeMethod("WmiSetBrightness", inParams);
+                    var result = obj.InvokeMethod("WmiSetBrightness", inParams);
+                    if (result == null || Convert.ToUInt32(result) != 0)
+                        throw new InvalidOperationException($"WmiSetBrightness failed: {result ?? "no result"}.");
                     return;
                 }
             }

@@ -13,6 +13,9 @@ namespace ScreenProtector.Properties
 
         public int IdleSecondsThreshold { get; set; } = 60;
         public bool EnableIdleCheck { get; set; } = false;
+        public bool EnableIdleScreenOff { get; set; } = false;
+        public bool AutoSwitchMode { get; set; } = true;
+        public bool UseRemoteMode { get; set; } = false;
         public bool EnableStartup { get; set; } = false;
 
         private static Settings Load()

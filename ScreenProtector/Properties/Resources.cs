@@ -16,6 +16,13 @@ namespace ScreenProtector.Properties
         public static string Brightness_SectionHeader => _resourceManager.GetString("Brightness_SectionHeader", CultureInfo.CurrentUICulture) ?? string.Empty;
         public static string Brightness_Refresh => _resourceManager.GetString("Brightness_Refresh", CultureInfo.CurrentUICulture) ?? string.Empty;
 
+        public static string Tray_TurnOffDisplay => _resourceManager.GetStringSafe("Tray_TurnOffDisplay");
+        public static string Error_CannotTurnOffDisplay => _resourceManager.GetStringSafe("Error_CannotTurnOffDisplay");
+        public static string Error_CannotExitBlackout => _resourceManager.GetStringSafe("Error_CannotExitBlackout");
+        public static string DisplayOff_RdpDimmed => _resourceManager.GetStringSafe("DisplayOff_RdpDimmed");
+        public static string Error_RdpBrightness => _resourceManager.GetStringSafe("Error_RdpBrightness");
+        public static string Error_RestoreBrightness => _resourceManager.GetStringSafe("Error_RestoreBrightness");
+
         public static string Idle_SectionHeader => _resourceManager.GetString("Idle_SectionHeader", CultureInfo.CurrentUICulture) ?? string.Empty;
         public static string Idle_Enable => _resourceManager.GetString("Idle_Enable", CultureInfo.CurrentUICulture) ?? string.Empty;
         public static string Idle_SecondsLabel => _resourceManager.GetStringSafe("Idle_SecondsLabel");

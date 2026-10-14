@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../ScreenProtector/ScreenBlackout.cs" Link="ScreenBlackout.cs" />
+    <Compile Include="../../ScreenProtector/IdleScreenOffTrigger.cs" Link="IdleScreenOffTrigger.cs" />
+    <Compile Include="../../ScreenProtector/LocalSessionGuard.cs" Link="LocalSessionGuard.cs" />
+    <Compile Include="../../ScreenProtector/RemoteBrightnessSession.cs" Link="RemoteBrightnessSession.cs" />
+    <Compile Include="../../ScreenProtector/ProtectionModeSelector.cs" Link="ProtectionModeSelector.cs" />
+    <Compile Include="../../ScreenProtector/Properties/Settings.cs" Link="Settings.cs" />
+  </ItemGroup>
+</Project>
+
